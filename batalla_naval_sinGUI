@@ -1,209 +1,207 @@
-import tkinter as tk
-from tkinter import messagebox
-
-CELL_SIZE = 40
-BOARD_SIZE = 10
-
-# ===================== Clases de lógica =====================
 class Ship:
     def __init__(self, name, size):
-        self.name = name
-        self.size = size
-        self.hits = 0
-        self.positions = []
+        self.name = name  # Nombre del barco (ej: "Destructor")
+        self.size = size # Tamaño del barco (cantidad de casillas que ocupa)
+        self.hits = 0  # Contador de impactos recibidos
+        self.positions = [] # Lista con posiciones (tuplas) ocupadas en el tablero
+
+    def place_ship(self, start_row, start_col, direction, board):
+        positions = []  # Lista temporal para guardar las posiciones a ocupar
+         
+        if direction == 'H': # Si la dirección es horizontal
+            if start_col + self.size > len(board[0]):  # Verifica que el barco no se salga del tablero horizontalmente
+                return False # Si se sale, retorna False para indicar que no se pudo colocar
+            for i in range(self.size):
+                if board[start_row][start_col+i] != ' ':  # Verifica que cada casilla esté vacía
+                    return False  # Si alguna está ocupada, retorna False
+                positions.append((start_row, start_col + i))  # Añade la posición válida a la lista
+                
+        elif direction == 'V':     # Si la dirección es vertical
+            if start_row + self.size > len(board): # Validar que no se salga del borde vertical
+                return False
+            for i in range(self.size):
+                if board[start_row+i][start_col] != ' ':  # Verifica que la casilla vertical esté vacía
+                    return False
+                positions.append((start_row + i, start_col))   # Añade la posición válida verticalmente
+
+        else:
+            return False  # Si la dirección no es ni H ni V, retorna False
+        
+        # Si llegamos aquí, todas las posiciones son válidas, así que colocamos el barco
+        for row, col in positions:
+            board[row][col] = self.name[0].upper() # Pone la primera letra del nombre del Ship en mayúscula en el tablero
+        
+        self.positions = positions  # Guarda las posiciones definitivas del barco
+        return True  # Retorna True indicando que el barco se colocó con éxito
+
+
 
     def hit(self):
-        self.hits += 1
-        return self.hits == self.size
+        self.hits +=1 # Incrementa el contador de impactos
+        if self.hits == self.size:  # Si impactos igualan el tamaño, barco hundido
+            return True    # Retorna True indicando hundido
+        return False    # Si no, retorna False
+        
 
+# Definición de tipos de barcos con herencia para simplificar
 class Patrol(Ship):
     def __init__(self):
-        super().__init__('Patrulla', 2)
+        super().__init__('Patrulla',2) # Llama al constructor de Ship con nombre y tamaño
 
 class Destroyer(Ship):
     def __init__(self):
-        super().__init__('Destructor', 3)
+        super().__init__('Destructor',3)
 
 class Submarine(Ship):
     def __init__(self):
-        super().__init__('Submarino', 3)
+        super().__init__('Submarino',3)
 
 class Battleship(Ship):
     def __init__(self):
-        super().__init__('Buque', 4)
+        super().__init__('Buque',4)
 
 class Carrier(Ship):
     def __init__(self):
-        super().__init__('PortaAviones', 5)
+        super().__init__('PortaAviones',5)
+
 
 class Player:
     def __init__(self, name):
-        self.name = name
-        self.board = [[' ' for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)]
-        self.ships = []
+        self.name = name # Nombre del jugador
+        self.ships = [] # Lista de barcos colocados por el jugador
+        self.board = [[' ' for _ in range(10)] for _ in range(10)] # Crea un tablero 10x10 lleno de espacios
+        self.hits_made = 0 # Contador de impactos realizados por el jugador
 
-    def place_ship(self, ship, start_row, start_col, direction):
-        positions = []
-        # Verificar espacio disponible y límites
-        if direction == 'H':
-            if start_col + ship.size > BOARD_SIZE:
-                return False
-            for i in range(ship.size):
-                if self.board[start_row][start_col + i] != ' ':
-                    return False
-                positions.append((start_row, start_col + i))
+
+    def print_board(self, show_ships=True):
+        print("   " + " ".join(str(i) for i in range(10))) # Muestra encabezado con números de columna
+        for row_num in range(10):
+            print(f"{row_num}  ", end="") # Imprime número de fila al inicio de cada línea
+            for col_num in range(10):
+                char = self.board[row_num][col_num]
+                if not show_ships and char not in [' ', 'X', 'O']: # Ocultar barcos si es tablero enemigo
+                    print(' ', end=" ")
+                else:
+                    print(char, end=" ")   # Imprime el caracter (barco, X, O o espacio)
+            print() # Salto de línea al final de cada fila
+
+        
+
+    def place_ships(self):
+        ships_to_place = [
+            Destroyer(),
+            Submarine(),
+            Battleship(),
+            Patrol(),
+            Carrier()
+        ]  # Barcos a colocar
+
+        for ship in ships_to_place:
+            placed = False
+            while not placed:   # Bucle hasta que se coloque correctamente
+                print(f"\n{self.name}, coloca el barco {ship.name} (tamaño {ship.size})")
+                try:
+                    row = int(input("Fila (0-9): "))  # Entrada fila
+                    col = int(input("Columna (0-9): ")) # Entrada columna
+
+                    if not (0 <= row < 10) or not (0 <= col < 10):  # Valida rango fila y columna
+                        print("Fila o columna fuera de rango. Intenta con números entre 0 y 9.")
+                        continue
+
+
+                    direction = input("Dirección (H para horizontal, V para vertical): ").upper()
+                    
+                    if direction not in ('H', 'V'): # Validar dirección
+                        print("Dirección inválida. Intenta de nuevo.")
+                        continue
+
+                    if ship.place_ship(row, col, direction, self.board): # Intenta colocar el barco
+                        self.ships.append(ship)  # Si éxito, añade a la lista de barcos
+                        self.print_board()  # Muestra tablero actualizado
+                        placed = True   # Salir del bucle
+
+                    else:
+                        print("No se pudo colocar el barco. Posición inválida o espacio ocupado.")
+                except ValueError: # Captura errores de conversión int
+                    print("Entrada inválida. Usa números para fila y columna.")
+
+    
+    
+    def has_been_attacked(self, row, col):
+        return self.board[row][col] in ['X', 'O'] # Retorna True si ya hay disparo en esa posición
+    
+
+    def attack(self, opponent):
+        while True:
+            try:
+                row = int(input(f"{self.name}, fila del ataque (0-9): ")) # Entrada fila ataque
+                col = int(input(f"{self.name}, columna del ataque (0-9): ")) # Entrada columna ataque
+                if not (0 <= row < 10 and 0 <= col < 10): # Validar rango de ataque
+                    print("Posición fuera de rango. Intenta de nuevo.")
+                    continue
+                if opponent.has_been_attacked(row, col):  # Verificar si ya se atacó
+                    print("Ya atacaste esta posición. Intenta otra.")
+                    continue
+                break
+            except ValueError:
+                print("Introduce números válidos para fila y columna.")
+
+        if opponent.board[row][col] != ' ': # Si hay barco en esa posición
+            print("¡Impacto!")
+            opponent.board[row][col] = 'X' # Marca impacto en tablero
+            self.hits_made +=1 # Incrementa impactos del jugador
+            for ship in opponent.ships: 
+                if (row, col) in ship.positions:   # Encuentra barco impactado
+                    hundido = ship.hit()  # Marca impacto en el barco
+                    if hundido:
+                        print(f"¡Hundiste el {ship.name}!") # Indica si se hundió
+                    break
         else:
-            if start_row + ship.size > BOARD_SIZE:
-                return False
-            for i in range(ship.size):
-                if self.board[start_row + i][start_col] != ' ':
-                    return False
-                positions.append((start_row + i, start_col))
-        # Colocar barco
-        for r, c in positions:
-            self.board[r][c] = ship.name[0]
-        ship.positions = positions
-        self.ships.append(ship)
-        return True
+            print("Agua...")
+            opponent.board[row][col] = 'O'  # Marca disparo fallido
 
-    def receive_attack(self, row, col):
-        if self.board[row][col] in ['X', 'O']:
-            return 'already'
-        if self.board[row][col] != ' ':
-            # impacto
-            self.board[row][col] = 'X'
-            for ship in self.ships:
-                if (row, col) in ship.positions:
-                    sunk = ship.hit()
-                    return 'sunk' if sunk else 'hit'
-        # agua
-        self.board[row][col] = 'O'
-        return 'miss'
-
+        print(f"\nTablero de {opponent.name} (sin barcos visibles):")
+        opponent.print_board(show_ships=False) # Mostrar tablero del oponente sin barcos visibles
+   
     def all_ships_sunk(self):
-        return all(ship.hits == ship.size for ship in self.ships)
+        return all(ship.hits == ship.size for ship in self.ships)  #retorna True si todos los barcos están hundidos
 
-# ===================== Interfaz Gráfica con Tkinter =====================
-class BattleshipGUI:
-    def __init__(self, root):
-        self.root = root
-        self.root.title('Batalla Naval')
 
-        self.players = [Player('Jugador 1'), Player('Jugador 2')]
-        self.current_player = 0  # índice jugador en turno
-        self.mode = 'placement'  # modos: 'placement' o 'attack'
-        self.direction = 'H'
+# Clase principal del juego
+class BattleshipGame:
+    def __init__(self):
+        self.player1 = Player(input("Nombre jugador 1: "))  # Crear jugador 1
+        self.player2 = Player(input("Nombre jugador 2: "))  # Crear jugador 2
 
-        # Barcos a colocar
-        self.ships_to_place = [Patrol(), Destroyer(), Submarine(), Battleship(), Carrier()]
-        self.place_index = 0
+    def play(self):
+        # Colocar barcos
+        print(f"\n{self.player1.name}, coloca tus barcos.")  # Mensaje jugador 1 coloca barcos
+        self.player1.place_ships()            # Jugador 1 coloca barcos
+        print(f"\n{self.player2.name}, coloca tus barcos.")   # Mensaje jugador 2 coloca barcos
+        self.player2.place_ships()    # Jugador 2 coloca barcos
 
-        # Canvas
-        canvas_width = BOARD_SIZE * CELL_SIZE * 2 + 50
-        canvas_height = BOARD_SIZE * CELL_SIZE + 50
-        self.canvas = tk.Canvas(root, width=canvas_width, height=canvas_height)
-        self.canvas.pack()
 
-        # Orientación
-        orient_frame = tk.Frame(root)
-        orient_frame.pack()
-        tk.Radiobutton(orient_frame, text='Horizontal', variable=tk.StringVar(value=self.direction),
-                       value='H', command=lambda: self.set_direction('H')).pack(side=tk.LEFT)
-        tk.Radiobutton(orient_frame, text='Vertical', variable=tk.StringVar(value=self.direction),
-                       value='V', command=lambda: self.set_direction('V')).pack(side=tk.LEFT)
+        current_player, opponent = self.player1, self.player2       # Definir quien comienza
 
-        self.canvas.bind('<Button-1>', self.on_click)
-        self.draw()
 
-    def set_direction(self, d):
-        self.direction = d
+        while True:
+            print(f"\nTurno de {current_player.name}")
+            current_player.attack(opponent)     # El jugador ataca
+         
+            if opponent.all_ships_sunk():  # Verifica si el oponente perdió
+                print(f"{current_player.name} ha ganado el juego!")
+                break
 
-    def draw(self):
-        self.canvas.delete('all')
-        # Dibujar tableros
-        for p_idx in range(2):
-            player = self.players[p_idx]
-            offset_x = p_idx * (BOARD_SIZE * CELL_SIZE + 20) + 20
-            # Números columnas
-            for c in range(BOARD_SIZE):
-                x = offset_x + c * CELL_SIZE + CELL_SIZE/2
-                self.canvas.create_text(x, 10, text=str(c))
-            # Números filas y celdas
-            for r in range(BOARD_SIZE):
-                y = 20 + r * CELL_SIZE + CELL_SIZE/2
-                self.canvas.create_text(offset_x - 10, y, text=str(r))
-                for c in range(BOARD_SIZE):
-                    x0 = offset_x + c * CELL_SIZE
-                    y0 = 20 + r * CELL_SIZE
-                    x1 = x0 + CELL_SIZE
-                    y1 = y0 + CELL_SIZE
-                    val = player.board[r][c]
-                    fill = 'white'
-                    if val == 'X': fill = 'red'
-                    elif val == 'O': fill = 'lightblue'
-                    elif p_idx == self.current_player or self.mode == 'placement':
-                        # mostrar barcos propios o en fase de colocación
-                        fill = 'gray' if val == ' ' else 'lightgray'
-                    else:
-                        # ocultar barcos enemigos en ataque
-                        fill = 'white' if val not in ['X','O'] else fill
-                    if val not in [' ', 'X', 'O'] and fill == 'lightgray':
-                        text = val
-                    else:
-                        text = val if val in ['X','O'] else ''
-                    self.canvas.create_rectangle(x0, y0, x1, y1, fill=fill, outline='black')
-                    self.canvas.create_text((x0+x1)/2, (y0+y1)/2, text=text)
-        # Indicador
-        info = f"Turno: {self.players[self.current_player].name} - "
-        info += "Coloca barcos" if self.mode == 'placement' else 'Ataca'
-        self.root.title(f'Batalla Naval - {info}')
+            current_player, opponent = opponent, current_player   # Cambia turno
 
-    def on_click(self, event):
-        x, y = event.x, event.y
-        p_idx = 0 if x < BOARD_SIZE * CELL_SIZE + 20 else 1
-        board_x = x - (p_idx * (BOARD_SIZE * CELL_SIZE + 20) + 20)
-        row = int((y - 20) // CELL_SIZE)
-        col = int(board_x // CELL_SIZE)
-        if row < 0 or row >= BOARD_SIZE or col < 0 or col >= BOARD_SIZE:
-            return
+    
+    
+        print(f"\nMarcador:")
+        print(f"{self.player1.name}: {self.player1.hits_made} impactos")
+        print(f"{self.player2.name}: {self.player2.hits_made} impactos")
 
-        player = self.players[self.current_player]
-        opponent = self.players[1 - self.current_player]
 
-        if self.mode == 'placement' and p_idx == self.current_player:
-            ship = self.ships_to_place[self.place_index]
-            if player.place_ship(ship, row, col, self.direction):
-                self.place_index += 1
-                if self.place_index >= len(self.ships_to_place):
-                    if self.current_player == 0:
-                        self.current_player = 1
-                        self.place_index = 0
-                        self.ships_to_place = [Patrol(), Destroyer(), Submarine(), Battleship(), Carrier()]
-                    else:
-                        self.mode = 'attack'
-                self.draw()
-            else:
-                messagebox.showwarning('Error', 'Posición inválida para colocar barco')
 
-        elif self.mode == 'attack' and p_idx != self.current_player:
-            result = opponent.receive_attack(row, col)
-            if result == 'already':
-                messagebox.showinfo('Info', 'Ya atacaste aquí')
-            elif result == 'hit':
-                messagebox.showinfo('¡Impacto!', 'Le diste a un barco')
-            elif result == 'sunk':
-                messagebox.showinfo('¡Hundido!', 'Hundiste un barco')
-            else:
-                messagebox.showinfo('Agua', 'No hubo barco')
-            if opponent.all_ships_sunk():
-                messagebox.showinfo('¡Victoria!', f'{player.name} ha ganado')
-                self.canvas.unbind('<Button-1>')
-            else:
-                self.current_player = 1 - self.current_player
-                self.draw()
-
-# Ejecutar
-if __name__ == '__main__':
-    root = tk.Tk()
-    app = BattleshipGUI(root)
-    root.mainloop()
+if __name__ == "__main__":   # Punto de entrada, solo si se ejecuta directamente
+    game = BattleshipGame() # Crea instancia del juego
+    game.play()        # Comienza el juego
